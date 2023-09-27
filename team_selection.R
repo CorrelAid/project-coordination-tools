@@ -130,8 +130,13 @@ mapping <- cleaned_df_filtered %>%
   select(applicant_id, email, first_name, last_name)
 mapping_path <- here::here(PROJECT_FOLDER, "mapping.csv")
 mapping %>% readr::write_csv(mapping_path)
+
 # google sheets upload 
-# TODO
+gs_main_table <- cleaned_df_filtered %>% 
+  dplyr::select(project_id, applicant_id, gender, applied_as = project_role, past_applications)
+gs_main_table_path <- here::here(PROJECT_FOLDER, "google_sheets_main_table.csv")
+gs_main_table %>% readr::write_csv(gs_main_table_path)
+
 
 # knit report 
 rmarkdown::render(here::here("templates/template_applications_report.Rmd"),
