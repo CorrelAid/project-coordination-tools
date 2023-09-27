@@ -16,10 +16,11 @@ knitr::opts_chunk$set(warning = FALSE)
 ```
 
 ```{r include=FALSE, message=FALSE}
-library(tidyverse)
-library(tidyverse)
+library(dplyr)
 library(patchwork)
 library(correltools)
+library(ggplot2)
+library(forcats)
 PROJECT_ID <- params$project_id
 ANON_PATH <- params$anon_path
 appl <- readr::read_csv(ANON_PATH)
