@@ -151,17 +151,18 @@ for (PROJECT_ID in project_ids) {
   # mapping from email / name to applicant_id
   mapping <- appl_proj %>% 
     select(applicant_id, email, first_name, last_name)
-  mapping_path <- here::here(PROJECT_FOLDER, "mapping.csv")
+  mapping_path <- here::here(PROJECT_FOLDER,  paste(PROJECT_ID, "mapping.csv", sep = "_"))
   mapping %>% readr::write_csv(mapping_path)
   # google sheets upload 
   gs_main_table <- appl_proj %>% 
-    dplyr::select(project_id, applicant_id, gender, applied_as = project_role, past_applications)
+    dplyr::select(project_id, applicant_id, gender, applied_as = project_role, past_applications) %>% 
+    dplyr::arrange(gender, applicant_id)
   gs_main_table_path <- here::here(PROJECT_FOLDER, "google_sheets_main_table.csv")
   gs_main_table %>% readr::write_csv(gs_main_table_path)
   
   
   # knit report 
   rmarkdown::render(here::here("templates/template_applications_report.Rmd"),
-                    output_dir = PROJECT_FOLDER,
+                    output_dir = PROJECT_FOLDER, output_file = paste(PROJECT_ID, "applications.html", sep = "_"),
                     params = list(project_id = PROJECT_ID, anon_path = anon_path))
 }
