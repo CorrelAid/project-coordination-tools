@@ -17,6 +17,7 @@ The project ID has three components:
 - Three-letter, uppercase identifier for the organization. Usually the first three letters of the organization’s name, unless it has a three-letter acronym (e.g in the case of the European Youth Parliament, we use EYP). If there are two projects starting with the same organization in a given month, we can give a three letter acronym that refers more to the content, e.g. EDA for exploratory data analysis.
 
 The components are arranged as follows: {year}-{month}-{identifier}
+
 ## R Packages
 Scripts are written in R so far. Feel free to contribute Python versions. 
 
