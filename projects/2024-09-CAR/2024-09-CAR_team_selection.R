@@ -32,7 +32,11 @@ applications <- kobo$get_submissions(survey_id)
 # rename 
 applications <- applications %>% 
   dplyr::rename(applicant_id = `_id`, motivation_why_involved = motivation_why) %>% 
-  dplyr::mutate(project_id = PROJECT_ID)
+  dplyr::mutate(project_id = PROJECT_ID) %>% 
+  group_by(email_address) %>% # some people click twice to apply and result in duplicates 
+  arrange(desc(end)) %>% # take newer submission
+  slice(1) %>% 
+  ungroup()
   
 
 # if the gender self identification variable does not exist, then create it but put NA
@@ -128,4 +132,3 @@ rmarkdown::render(here::here("templates/template_applications_report.Rmd"),
                   output_dir = PROJECT_FOLDER,
                   output_file = paste0(PROJECT_ID, "_applications.html"),
                   params = list(project_id = PROJECT_ID, anon_path = anon_path))
-
