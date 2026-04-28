@@ -1,7 +1,11 @@
 ---
 params:
-  applicant_id: 1
-  anon_path: "data/applications_anonymized.csv"
+  project_id: "2026-05-MIC"
+  folder: "projects/2026-05-MIC"
+  applicant_id: 1901
+  by_role: FALSE
+  role: 
+  anon: FALSE
 output: rmdformats::robobook
 ---
 <!-- THIS FILE IS NOT SUPPOSED TO BE KNITTED BY HAND
@@ -9,7 +13,7 @@ output: rmdformats::robobook
     BY THE APPLICATIONS_REPORT.RMD FILE FOR EACH APPLICANT.
     YOU CAN EDIT THIS FILE IF YOU WANT TO CHANGE THE INFORMATION DISPLAYED FOR EACH APPLICANT
 -->
-```{r include=FALSE}
+```{r, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 knitr::opts_chunk$set(message = FALSE)
 knitr::opts_chunk$set(warning = FALSE)
@@ -19,45 +23,106 @@ library(tidyr)
 library(tibble)
 library(ggplot2)
 library(readr)
+library(forcats)
+library(correltools)
 library(stringr)
 
-lvls <- tibble(level_num = c(0, 1, 2, 3), level = c("beginner", "user", "advanced", "expert"))
+# metadata: role profiles
+role_profiles <- readr::read_csv(here::here(params$folder, "data/role_profiles_long.csv")) %>% 
+  filter(project_id == params$project_id)
+
+# contains all applications to all projects
+gs_upload <- readr::read_csv(here::here(params$folder, "data/gs_upload.csv")) 
+roles_df <- gs_upload %>% 
+  filter(project_id == params$project_id) %>% 
+  select(applicant_id, project_id, project_role)
+  
+# applicant data
+wide <- readr::read_csv(here::here(params$folder, "data/wide.csv"))
+a <- wide |> 
+  filter(applicant_id == params$applicant_id) %>% 
+  as.list()
+
+# all applications of applicant
+a$roles <- roles_df %>% 
+  filter(applicant_id == params$applicant_id) %>% 
+  select(-applicant_id)
+
+# self assessment
+ratings <- readr::read_csv(here::here(params$folder, "data/ratings.csv"))
+a$ratings <- ratings %>% 
+  filter(applicant_id == params$applicant_id) %>% 
+  select(-applicant_id)
+```
+
+
+```{r fig.height=8, fig.width=6}
 # theme and palette
 theme_set(correltools::theme_correlaid(base_size = 12))
 correlpal <- correltools::correlaid_pal()
+
+# rating scale
+rating_mapping <- tibble::tribble(~rating, ~rating_num, 
+                                  "beginner", 1,
+                                  "user", 2,
+                                  "advanced", 3,
+                                  "expert", 4)
+
 ```
+
+
 
 ```{r message=FALSE}
-appl <- readr::read_csv(params$anon_path, col_types = cols())
-
-a <- appl %>% 
-  filter(applicant_id == params$applicant_id) 
-
-if (nrow(a) == 0) stop(glue::glue('There is no applicant with id {params$applicant_id}. Available ids: {paste(appl$applicant_id, collapse = ", ")}'))
+if (length(a) == 0) stop(glue::glue('There is no applicant with id {params$applicant_id}. Available ids: {paste(roles_df$applicant_id, collapse = ", ")}'))
 
 gender_str <- stringr::str_replace(a$gender, '_', ' ')
-role_str <- stringr::str_replace(a$project_role, '_', ' ')
-
-a_skills <- a %>% 
-  select(applicant_id, starts_with(c("skills", "techniques", "topics"))) %>% 
-  pivot_longer(starts_with(c("skills", "techniques", "topics")), names_to = "category", values_to = "level") %>% 
-  mutate(question = stringr::str_extract(category, "skills|techniques|topics")) %>% 
-  mutate(category = stringr::str_replace(category, "skills_|techniques_|topics_", "")) %>% 
-  mutate(category = stringr::str_replace_all(category, '_', ' ')) %>% 
-  rownames_to_column() %>% 
-  left_join(lvls, by = "level")
+role_str <- stringr::str_replace(a$roles$project_role %>% paste(collapse = ", "), '_', ' ')
 ```
 
-# `r a$applicant_id` - `r gender_str` - `r role_str` {#applicant-`r a$applicant_id`}
+
+```{r, results='asis'}
+# header
+
+if (params$by_role) {
+  h <- sprintf("## %s - %s", a$applicant_id, gender_str)
+  
+} else {
+  h <- sprintf("# %s - %s - %s", a$applicant_id, gender_str, role_str)
+}
+cat(h, sep = "\n")
+
+```
+
 **Gender**: `r gender_str`
 
-**Project role for this project**: `r role_str`
- 
-**Projects they applied to**: `r a$applied_to %>% stringr::str_replace_all(' ', ', ')`
+**Project role(s) for this project**: `r role_str`
+
+**All applications:**
+```{r}
+# count no of applications for all roles
+roles_count <- roles_df %>% 
+  count(project_id, project_role, name = "# applications for role")
+a$roles %>% 
+  left_join(roles_count, by = c("project_id", "project_role")) %>% 
+  knitr::kable()
+```
 
 **German skills**: `r a$german_skills`
 
-### Past applications
+**D4GV Workshops**: `r a$d4gv_participation`
+
+**Team coordinator tasks**: 
+```{r results = 'asis'}
+if ("team_coordinator" %in% a$roles$project_role) {
+  cat("applied as team coordinator.")
+} else {
+  cat(a$team_coordinator_tasks)
+}
+```
+
+
+**Past applications**
+
 ```{r results='asis'}
 if (is.na(a$past_applications)) {
   cat('No information about past applications was collected')
@@ -72,39 +137,138 @@ if (a$past_applications == 'first_application') {
 }
 ```
 
-### What skills qualify you?
+### Motivation & Skills
+
+#### What skills qualify you?
 
 `r a$motivation_skills`
 
-### Why do you want to get involved?
+#### Why do you want to get involved?
 
-`r a$motivation_why_involved`
+`r a$motivation_why`
 
-### Self-rated experience with skills, techniques and topics 
+#### What do you want to learn as a team trainee?
 
-```{r fig.height=8, fig.width=6}
-ggplot(a_skills, aes(x = category, y = level_num, group = question)) +
-  geom_segment(aes(
-    x = fct_rev(category),
-    xend = fct_rev(category),
-    y = 0,
-    yend = level_num
-  )) +
-  geom_point(size = 3, color = correlpal(1)) +
-  coord_flip() +
-  theme(
-    panel.grid.minor.y = element_blank(),
-    panel.grid.major.y = element_blank(),
-    legend.position = "none"
-  ) +
-  scale_y_continuous(
-    "level",
-    limits = c(0, max(lvls$level_num)),
-    breaks = seq(0, max(lvls$level_num), 1),
-    labels = lvls$level
-  ) +
-  facet_wrap(~question, nrow = 3, scales = "free_y") +
-  xlab("")
+```{r results='asis'}
+if ("team_trainee" %in% a$roles$project_role) {
+  cat(a$motivation_tt)
+} else {
+  cat("does not apply")
+}
+```
+
+
+#### Self-rated experience with tools, techniques and topics 
+
+**optional answer to "other tools":**
+
+```{r results='asis'}
+a$ratings %>% filter(skill == "tools_other") %>% pull(rating) %>% cat()
+```
+
+
+
+
+```{css}
+/* Make summary and arrow sit on the same line */
+details summary {
+  list-style: none;          /* remove default marker */
+  cursor: pointer;
+  display: flex;             /* key: keeps arrow + text aligned */
+  align-items: center;       /* vertical alignment */
+  gap: 0.4em;                /* space between arrow and text */
+}
+
+/* Hide default marker in WebKit browsers */
+details summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Custom arrow */
+details summary::before {
+  content: "▸";
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+
+/* Rotate when open */
+details[open] summary::before {
+  transform: rotate(90deg);
+}
+```
+
+```{r}
+skill_plot <- function(ratings_role) {
+  p <- ggplot(ratings_role, aes(y = fct_reorder(skill, -pos), color = question, group = question, x = rating_num)) +
+    geom_segment(aes(
+      y = fct_reorder(skill, -pos),
+      yend = fct_reorder(skill, -pos),
+      x = 1,
+      xend = rating_num
+    )) +
+    geom_point(size = 3) +
+    scale_color_correlaid_d()+
+    theme(
+      panel.grid.minor.y = element_blank(),
+      panel.grid.major.y = element_blank(), 
+      legend.position = "bottom"
+    ) +
+    scale_x_continuous(
+      "level",
+      limits = c(min(rating_mapping$rating_num), max(rating_mapping$rating_num)),
+      breaks = seq(min(rating_mapping$rating_num), max(rating_mapping$rating_num), 1),
+      labels = rating_mapping$rating
+    ) +
+    labs(y = NULL, color = "")
+  return(p)
+}
+```
+
+
+```{r results='asis', fig.height=8, fig.width=6}
+
+if (params$by_role) {
+  role_profile <- role_profiles %>% 
+      filter(role == params$role)
+  
+  a_ratings_role <- a$ratings %>% 
+    filter(skill %in% role_profile$skill) %>% 
+    arrange(question, skill) %>% 
+    mutate(pos = 1:n())
+  
+  cat(sprintf("**Skills for role %s**", params$role), sep = "\n")
+  cat(sprintf("mean rating: %.2f", mean(a_ratings_role$rating_num, na.rm = TRUE)))
+  
+    p <- skill_plot(a_ratings_role)
+    print(p)
+} else {
+  
+  for (this_role in a$roles$project_role) {
+    # filter role profile and then only show skills relevant to the role
+    this_role_profile <- role_profiles %>% 
+      filter(role == this_role)
+    
+    # filter ratings relevant to role
+    a_ratings_role <- a$ratings %>% 
+      filter(skill %in% this_role_profile$skill) %>% 
+      arrange(question, skill) %>% 
+      mutate(pos = 1:n())
+    
+    anchor_id <- sprintf("%s-%s", a$applicant_id, tolower(this_role))
+    cat(sprintf("### Role %s - %.2f {#%s}\n\n", this_role,
+              mean(a_ratings_role$rating_num, na.rm = TRUE), anchor_id))
+    
+    cat("<details>\n")
+    cat(paste0("<summary><h4>Plot ", this_role, "</h4></summary>"))
+    
+    p <- skill_plot(a_ratings_role)
+    print(p)
+    
+    cat("</details>\n")
+  
+    cat("\n")
+  }
+}
 ```
 
 

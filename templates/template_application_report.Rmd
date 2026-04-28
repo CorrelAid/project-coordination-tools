@@ -1,0 +1,85 @@
+---
+params:
+  project_id: "2026-04-MIC"
+  folder: "projects/2026-03-MIC"
+  anon: TRUE
+  by_role: FALSE
+output: 
+  rmdformats::robobook:
+    toc_depth: 3
+title: "Applications for project `r toupper(params$project_id)`"
+---
+<!-- THIS FILE IS NOT SUPPOSED TO BE KNITTED DIRECTLY
+    INSTEAD IT IS KNIT FROM _targets.R
+    IF YOU WANT TO KNIT THIS BY HAND, SET THE PARAMETERS ACCORDINGLY
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r setup-data-report, include=FALSE, message=FALSE}
+library(dplyr)
+library(patchwork)
+library(correltools)
+library(ggplot2)
+library(forcats)
+
+
+roles_df <- readr::read_csv(here::here(params$folder, "data/gs_upload.csv")) 
+roles_df <- roles_df %>% 
+  filter(project_id == params$project_id) %>% 
+  select(applicant_id, gender, project_id, project_role) 
+```
+
+**Report metadata**:
+
+- time generated: `r format(Sys.time(), '%Y-%m-%d, %H:%m:%S UTC%z')`
+- applications included: `r unique(roles_df$applicant_id) %>% length()`
+
+# Introduction
+### Helpful links for team selection committee
+- [Team selection criteria and best practices](https://docs.correlaid.org/project-manual/project-coordinators/ideation-finding-a-team#team-selection-call)
+- [Explanation of the experience scale](https://docs.correlaid.org/project-manual/data4good-projects#experience-scale) ("Beginner", "User", "Advanced", "Expert") 
+
+
+```{r knit-single, results='asis', echo=FALSE}
+
+if (params$by_role) {
+  for (project_role in (roles_df$project_role %>% unique())) {
+    cat(sprintf("# %s\n", project_role))
+    
+    # only applications for this role
+    appl_sorted <- roles_df %>% 
+      dplyr::filter(project_role == .env$project_role) %>% 
+      arrange(gender, applicant_id)
+
+      res <- lapply(appl_sorted$applicant_id, function(id) {
+        params <- list(applicant_id = id, project_id = params$project_id, folder = params$folder, by_role = params$by_role, role = project_role)
+        knitr::knit_child(
+          'template_application_single.Rmd', envir = environment(), quiet = TRUE
+        )
+      })
+    cat(unlist(res), sep = '\n')
+  }
+} else {
+
+  # only applications for this role
+  appl_sorted <- roles_df %>% 
+    distinct(gender, applicant_id) %>% 
+    arrange(gender, applicant_id)
+    
+  res <- lapply(appl_sorted$applicant_id, function(id) {
+    params <- list(applicant_id = id, project_id = params$project_id, folder = params$folder, by_role = params$by_role)
+    knitr::knit_child(
+      'template_application_single.Rmd', envir = environment(), quiet = TRUE
+    )
+  })
+  cat(unlist(res), sep = '\n')
+}
+
+
+
+```
+

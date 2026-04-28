@@ -3,5 +3,5 @@
 .RData
 .Ruserdata
 projects/
-
+templates/*html
 .DS_Store
