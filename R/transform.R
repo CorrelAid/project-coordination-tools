@@ -1,25 +1,3 @@
-get_survey <- function(kobo, kobo_survey_name) {}
-
-create_kobo <- function(url = "kobo.correlaid.org") {
-    kobo <- kbtbr::Kobo$new(url)
-    kobo
-}
-
-
-get_survey_id <- function(kobo, kobo_survey_name) {
-    all_surveys <- kobo$get_surveys()
-    # get survey id
-    survey <- all_surveys %>%
-        filter(str_detect(name, kobo_survey_name))
-    stopifnot(nrow(survey) == 1)
-    return(survey %>% pull(uid))
-}
-
-get_applications <- function(kobo, survey_id) {
-    kobo$get_submissions(survey_id)
-}
-
-
 clean_applications_raw <- function(applications_raw) {
     applications_clean <- applications_raw %>%
         dplyr::rename(applicant_id = `_id`) %>% # id column
@@ -189,62 +167,7 @@ calculate_skill_rating_per_role <- function(
         )
 }
 
-save_wide <- function(demographics, other_quali, file) {
-    wide <- demographics %>%
-        left_join(other_quali, by = "applicant_id") %>%
-        dplyr::select(
-            applicant_id,
-            gender,
-            first_name,
-            last_name,
-            starts_with("motivation"),
-            starts_with("past_applications"),
-            team_coordinator_tasks,
-            d4gv_participation
-        ) %>%
-        arrange(applicant_id)
-    wide %>% readr::write_csv(file)
-    file
-}
 
-
-save_ratings <- function(ratings, file) {
-    ratings %>%
-        dplyr::select(
-            applicant_id,
-            question,
-            skill,
-            rating,
-            rating_num
-        ) %>%
-        arrange(applicant_id) %>%
-        readr::write_csv(file)
-    file
-}
-
-
-save_gs_upload <- function(roles_skills, demographics, other_quali, file) {
-    roles_skills %>%
-        left_join(demographics, by = "applicant_id") %>%
-        left_join(other_quali, by = "applicant_id") %>%
-        dplyr::select(
-            applicant_id,
-            gender,
-            project_id,
-            project_role,
-            past_applications,
-            pa_score,
-            skills_mean_self = mean_skills
-        ) %>%
-        arrange(gender, applicant_id, project_id, project_role) %>%
-        readr::write_csv(file)
-    file
-}
-
-
-read_role_profiles <- function(file) {
-    readr::read_csv(file)
-}
 
 make_role_profiles_long <- function(role_profiles_wide) {
     role_profiles_wide %>%
@@ -263,34 +186,4 @@ make_role_profiles_long <- function(role_profiles_wide) {
         filter(!is.na(skill)) %>%
         separate_rows(skill, sep = ",") %>%
         mutate(skill = str_trim(skill))
-}
-
-make_report <- function(
-    project_id,
-    folder,
-    template_report,
-    template_single,
-    by_role = FALSE,
-    anon = TRUE
-) {
-    output_file <- ifelse(by_role, sprintf("%s-by-role.html", project_id), sprintf("%s-by-appl.html", project_id))
-    # knit report
-    rmarkdown::render(
-        here::here(template_report),
-        output_dir = folder,
-        output_file = output_file,
-        params = list(
-            project_id = project_id,
-            folder = folder,
-            by_role = by_role,
-            anon = anon
-        )
-    )
-}
-
-save_role_profiles <- function(role_profiles_long, folder = FOLDER) {
-    path <- here::here(folder, "data/role_profiles_long.csv")
-    role_profiles_long %>%
-        readr::write_csv(path)
-    return(path)
 }
