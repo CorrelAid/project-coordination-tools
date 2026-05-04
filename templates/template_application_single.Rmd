@@ -27,6 +27,8 @@ library(forcats)
 library(correltools)
 library(stringr)
 
+source("viz.R")
+
 # metadata: role profiles
 role_profiles <- readr::read_csv(here::here(params$folder, "data/role_profiles_long.csv")) %>% 
   filter(project_id == params$project_id)
@@ -62,11 +64,7 @@ theme_set(correltools::theme_correlaid(base_size = 12))
 correlpal <- correltools::correlaid_pal()
 
 # rating scale
-rating_mapping <- tibble::tribble(~rating, ~rating_num, 
-                                  "beginner", 1,
-                                  "user", 2,
-                                  "advanced", 3,
-                                  "expert", 4)
+rating_mapping <- load_rating_mapping()
 
 ```
 
@@ -197,32 +195,6 @@ details[open] summary::before {
 }
 ```
 
-```{r}
-skill_plot <- function(ratings_role) {
-  p <- ggplot(ratings_role, aes(y = fct_reorder(skill, -pos), color = question, group = question, x = rating_num)) +
-    geom_segment(aes(
-      y = fct_reorder(skill, -pos),
-      yend = fct_reorder(skill, -pos),
-      x = 1,
-      xend = rating_num
-    )) +
-    geom_point(size = 3) +
-    scale_color_correlaid_d()+
-    theme(
-      panel.grid.minor.y = element_blank(),
-      panel.grid.major.y = element_blank(), 
-      legend.position = "bottom"
-    ) +
-    scale_x_continuous(
-      "level",
-      limits = c(min(rating_mapping$rating_num), max(rating_mapping$rating_num)),
-      breaks = seq(min(rating_mapping$rating_num), max(rating_mapping$rating_num), 1),
-      labels = rating_mapping$rating
-    ) +
-    labs(y = NULL, color = "")
-  return(p)
-}
-```
 
 
 ```{r results='asis', fig.height=8, fig.width=6}
@@ -239,7 +211,7 @@ if (params$by_role) {
   cat(sprintf("**Skills for role %s**", params$role), sep = "\n")
   cat(sprintf("mean rating: %.2f", mean(a_ratings_role$rating_num, na.rm = TRUE)))
   
-    p <- skill_plot(a_ratings_role)
+    p <- skill_plot(a_ratings_role, rating_mapping)
     print(p)
 } else {
   
@@ -261,7 +233,7 @@ if (params$by_role) {
     cat("<details>\n")
     cat(paste0("<summary><h4>Plot ", this_role, "</h4></summary>"))
     
-    p <- skill_plot(a_ratings_role)
+    p <- skill_plot(a_ratings_role, rating_mapping)
     print(p)
     
     cat("</details>\n")

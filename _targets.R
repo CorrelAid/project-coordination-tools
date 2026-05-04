@@ -6,6 +6,7 @@ library(magrittr)
 tar_source("R")
 
 FOLDER <- here::here("projects", "2026-05-MIC")
+LOAD_SELECTED <- FALSE
 
 tar_option_set(
   packages = c(
@@ -25,7 +26,9 @@ list(
       dotenv::load_dot_env(here::here(FOLDER, ".env"))
       list(
         PROJECT_IDS = Sys.getenv("PROJECT_IDS") %>% stringr::str_split_1(","),
-        KOBO_SURVEY_NAME = sprintf("Project Application Form: %s", Sys.getenv("PROJECT_IDS") %>% stringr::str_split_1(","))
+        KOBO_SURVEY_NAME = sprintf("Project Application Form: %s", Sys.getenv("PROJECT_IDS") %>% stringr::str_split_1(",")),
+        GSHEET = Sys.getenv("GSHEET")
+        
       )
     },
     cue = tar_cue(mode = "always")  # always read
@@ -102,8 +105,17 @@ list(
     saved_ratings,
     save_ratings(skill_ratings_long, skill_ratings_long_file)
   ),
-  # todo mapping
 
+
+  tar_target(
+    mapping,
+    {
+      path <- here::here(FOLDER, "data", "mapping.csv")
+      demographics %>% select(-gender) %>% readr::write_csv(path)
+      return(path)
+    },
+    format = "file"
+  ),  
   # REPORTS
   # anonymized
   tar_target(
@@ -111,22 +123,42 @@ list(
     here::here("templates", "template_application_single.Rmd"),
     format = "file"
   ),
-    tar_target(
-    template_report,
+  tar_target(
+    template_application_report,
     here::here("templates", "template_application_report.Rmd"),
+    format = "file"
+  ),
+  tar_target(
+    template_selected_report,
+    here::here("templates", "template_selected_report.Rmd"),
     format = "file"
   ),
 
   tar_target(
     report_anon_by_appl,
-    command = make_report(config$PROJECT_IDS, FOLDER, template_report, template_single, by_role = FALSE, anon = TRUE),
+    command = make_application_report(config$PROJECT_IDS, FOLDER, template_application_report, by_role = FALSE),
     format = "file"
   ),
   tar_target(
     report_anon_by_role,
-    command = make_report(config$PROJECT_IDS, FOLDER, template_report, template_single, by_role = TRUE, anon = TRUE),
+    command = make_application_report(config$PROJECT_IDS, FOLDER, template_application_report, by_role = TRUE),
     format = "file"
-  )
+  ),
 
   # selected team with names
+  tar_target(
+    selected,
+    {
+      path <- here::here(FOLDER, "data", "selected.csv")
+      load_selected(config$GSHEET) %>% readr::write_csv(path)
+      return(path)
+    },
+    format = "file",
+    cue = tar_cue(mode = ifelse(LOAD_SELECTED, "always", "thorough"))
+  ),
+  tar_target(
+    report_selected_team,
+    command = make_selected_report(config$PROJECT_IDS, FOLDER, template_selected_report),
+    format = "file"
+  )
 )

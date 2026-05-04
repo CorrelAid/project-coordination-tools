@@ -61,3 +61,12 @@ save_role_profiles <- function(role_profiles_long, folder = FOLDER) {
         readr::write_csv(path)
     return(path)
 }
+
+load_selected <- function(sheet_url, sheet_name = "mapping") {
+  mapping_sheet <- googlesheets4::read_sheet(sheet_url, sheet = sheet_name)
+  
+  selected_people <- mapping_sheet %>% 
+    filter(role != "")
+  
+  return(selected_people)
+}
