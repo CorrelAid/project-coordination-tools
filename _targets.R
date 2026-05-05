@@ -5,8 +5,9 @@ library(magrittr)
 # load all custom functions
 tar_source("R")
 
-FOLDER <- here::here("projects", "2026-05-MIC")
+FOLDER <- here::here("projects", "example")
 LOAD_SELECTED <- FALSE
+LOAD_FROM_KOBO <- TRUE
 
 tar_option_set(
   packages = c(
@@ -26,8 +27,11 @@ list(
       dotenv::load_dot_env(here::here(FOLDER, ".env"))
       list(
         PROJECT_IDS = Sys.getenv("PROJECT_IDS") %>% stringr::str_split_1(","),
-        KOBO_SURVEY_NAME = sprintf("Project Application Form: %s", Sys.getenv("PROJECT_IDS") %>% stringr::str_split_1(",")),
-        GSHEET = Sys.getenv("GSHEET")
+        KOBO_SURVEY_MATCH = Sys.getenv("PROJECT_IDS"),
+        KOBO_SURVEY_ID = Sys.getenv("KOBO_SURVEY_ID"),
+        GSHEET = Sys.getenv("GSHEET"),
+        LOAD_FROM_KOBO = LOAD_FROM_KOBO,
+        LOAD_SELECTED = LOAD_SELECTED
         
       )
     },
@@ -38,11 +42,11 @@ list(
 
   # ROLE PROFILES FROM XLSFORM GOOGLE SHEETS
   tar_target(
-    file,
+    role_profiles_downloaded,
     here::here(FOLDER, "data", "role_profiles.csv"),
     format = "file"
   ),
-  tar_target(role_profiles_wide, read_role_profiles(file)),
+  tar_target(role_profiles_wide, read_role_profiles(role_profiles_downloaded)),
   tar_target(role_profiles_long, make_role_profiles_long(role_profiles_wide)),
   tar_target(
     saved_role_profiles,
@@ -51,8 +55,7 @@ list(
   ),
 
   # LOAD DATA FROM KOBO AND INITIAL CLEANING
-  tar_target(survey_id, get_survey_id(kobo, config$KOBO_SURVEY_NAME)),
-  tar_target(applications_raw, get_applications(kobo, survey_id)),
+  tar_target(applications_raw, get_applications(kobo, config$KOBO_SURVEY_ID)),
   tar_target(applications_clean, clean_applications_raw(applications_raw)),
 
   # EXTRACT DIFFERENT DATASETS FOR DATA WRANGLING
@@ -77,33 +80,21 @@ list(
 
   # JOIN + SAVE
   tar_target(
-    gs_upload_file,
-    here::here(FOLDER, "data", "gs_upload.csv"),
-    format = "file"
-  ),
-  tar_target(
     saved_gs_upload,
     command = save_gs_upload(
       roles_skills,
       demographics,
       other_quali,
-      gs_upload_file
-    )
-  ),
-  tar_target(
-    wide_file,
-    here::here(FOLDER, "data", "wide.csv"),
+      here::here(FOLDER, "data", "gs_upload.csv")
+    ), 
     format = "file"
   ),
-  tar_target(saved_wide, save_wide(demographics, other_quali, wide_file)),
-  tar_target(
-    skill_ratings_long_file,
-    here::here(FOLDER, "data", "ratings.csv"),
-    format = "file"
-  ),
+  tar_target(saved_wide, save_wide(demographics, other_quali, here::here(FOLDER, "data", "wide.csv")),
+             format = "file"),
   tar_target(
     saved_ratings,
-    save_ratings(skill_ratings_long, skill_ratings_long_file)
+    save_ratings(skill_ratings_long, here::here(FOLDER, "data", "ratings.csv")),
+    format = "file"
   ),
 
 
