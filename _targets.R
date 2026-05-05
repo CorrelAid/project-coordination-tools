@@ -16,6 +16,7 @@ tar_option_set(
 # load your functions
 tar_source("R")
 
+# CHANGE THIS!
 FOLDER <- here::here("projects", "example")
 
 list(

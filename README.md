@@ -19,34 +19,35 @@ The project ID has three components:
 The components are arranged as follows: {year}-{month}-{identifier}
 
 ## R Packages
-Scripts are written in R so far. Feel free to contribute Python versions. 
+Scripts are written in R so far. 
 
 1. [Install R and RStudio](https://www.dataquest.io/blog/tutorial-getting-started-with-r-and-rstudio/)
 2. In the "console" winndow in RStudio, enter `install.packages("renv")` to install the `renv` package
 3. run `renv::restore()` to install the dependencies of this repository. 
 
 ## KoboToolbox API token
-For the processing of applications, you need the API token from a [CorrelAid KoboToolbox](https://kobo.correlaid.org) account that has access to the form "Applications for CorrelAid Projects". 
+For the processing of applications, you need the API token from a [CorrelAid KoboToolbox](https://kobo.correlaid.org) account that has access to the survey/application form you want to process.
 
-1. install the `usethis` R package: `install.packages("usethis")`
-2. in the "console" window in RStudio enter `usethis::edit_r_environ()`. This will open the user environment file for R. 
-3. Log into your account and open the [security settings](https://kobo.correlaid.org/#/account/security)
-4. Copy the API token and paste in the environment file (see step 2):
+Log into your account and open the [security settings](https://kobo.correlaid.org/#/account/security)
+
+# Using the tools
+
+This project uses `targets` for workflow orchestration.
+
+1. Create folder under `projects/`, e.g. using your project ID or YYYY-mm if you want to do team selection for multiple projects
+2. Create `.env` file in the folder and fill:
 
 ```
-KBTBR_TOKEN="YOUR TOKEN"
+KBTBR_TOKEN="KOBO TOKEN HERE"
+PROJECT_IDS="2026-12-EXA" # comma separated if multiple project ids
+KOBO_SURVEY_ID="KOBO ASSET ID HERE" # asset id of the kobo survey (you can find this in the survey url at kobo.correlaid.org)
+GSHEET="Google Sheets URL where you did anonymized team selection" # only needed if you want to do the selected team report as well.
 ```
 
-5. Restart RStudio. 
+3. open `_targets.R` and change `FOLDER` definition in line 20. This will make sure that your `.env` file is loaded
+4. run `tar_make()` in the console
 
-# Team selection 
-**Optional**: if you know that you want to make edits to the scripts, then create a project folder for your project under `projects` with the project ID as the subfolder name. For example: `projects/2022-04-LAU`. You can then copy the `team_selection.R` script to this folder and edit it as you wish. Otherwise, the script in the root will create this folder for you for the outputs.
-## Generate HTML report and create datasets
-1. Open `team_selection.R` and replace `PROJECT_ID` with your project id in line 10. 
-2. Run the script line by line or _source_ it ("Run" respectively "Source" button in RStudio). 
-3. This will create a project folder under `projects` with with different csv files and the **HTML report** used for team selection.
 
-- `applications.csv`: applications for the project
-- `applications_anon.csv`: anonymized applications, i.e. name and email address removed
-- `mapping.csv`: mapping of applicant ID to name and email address to contact people after team selection.  
-- `google_sheets_main_table.csv`: heavily anonymized version (only applicant_id, role and gender) to upload to the main table of the google sheets template
+Refer to the [targets documentation](https://books.ropensci.org/targets/) if you run into problems. Especially relevant could be the following commands.
+
+- `tar_invalidate(applications_raw)` to rerun loading data from Kobo
