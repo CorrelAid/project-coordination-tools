@@ -1,8 +1,11 @@
 ---
 params:
-  project_id: "2026-04-MIC"
-  folder: "projects/2026-03-MIC"
-  anon: TRUE
+  project_id: "2026-12-TES"
+  folder: "projects/example"
+  file_role_profiles_long:
+  file_applicant_project_roles:
+  file_applicant_wide:
+  file_applicant_skill_ratings:
   by_role: FALSE
 output: 
   rmdformats::robobook:
@@ -27,7 +30,7 @@ library(ggplot2)
 library(forcats)
 
 
-roles_df <- readr::read_csv(here::here(params$folder, "data/gs_upload.csv")) 
+roles_df <- readr::read_csv(params$file_applicant_project_roles) 
 roles_df <- roles_df %>% 
   filter(project_id == params$project_id) %>% 
   select(applicant_id, gender, project_id, project_role) 
@@ -56,10 +59,20 @@ if (params$by_role) {
       arrange(gender, applicant_id)
 
       res <- lapply(appl_sorted$applicant_id, function(id) {
-        params <- list(applicant_id = id, project_id = params$project_id, folder = params$folder, by_role = params$by_role, role = project_role)
+        
+        params <- list(
+            applicant_id = id, 
+            project_id = params$project_id, 
+            file_role_profiles_long = params$file_role_profiles_long,
+            file_applicant_project_roles = params$file_applicant_project_roles,
+            file_applicant_wide = params$file_applicant_wide,
+            file_applicant_skill_ratings = params$file_applicant_skill_ratings,
+            by_role = params$by_role,
+            role = project_role)
         knitr::knit_child(
-          'template_application_single.Rmd', envir = environment(), quiet = TRUE
+          here::here("templates", 'template_application_single.Rmd'), envir = environment(), quiet = TRUE
         )
+
       })
     cat(unlist(res), sep = '\n')
   }
@@ -71,9 +84,16 @@ if (params$by_role) {
     arrange(gender, applicant_id)
     
   res <- lapply(appl_sorted$applicant_id, function(id) {
-    params <- list(applicant_id = id, project_id = params$project_id, folder = params$folder, by_role = params$by_role)
+    params <- list(
+      applicant_id = id, 
+      project_id = params$project_id, 
+      file_role_profiles_long = params$file_role_profiles_long,
+      file_applicant_project_roles = params$file_applicant_project_roles,
+      file_applicant_wide = params$file_applicant_wide,
+      file_applicant_skill_ratings = params$file_applicant_skill_ratings,
+      by_role = params$by_role)
     knitr::knit_child(
-      'template_application_single.Rmd', envir = environment(), quiet = TRUE
+      here::here("templates", 'template_application_single.Rmd'), envir = environment(), quiet = TRUE
     )
   })
   cat(unlist(res), sep = '\n')

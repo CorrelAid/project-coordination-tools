@@ -187,3 +187,38 @@ make_role_profiles_long <- function(role_profiles_wide) {
         separate_rows(skill, sep = ",") %>%
         mutate(skill = str_trim(skill))
 }
+
+
+build_wide <- function(demographics, other_quali) {
+    wide <- demographics %>%
+        left_join(other_quali, by = "applicant_id") %>%
+        dplyr::select(
+            applicant_id,
+            gender,
+            first_name,
+            last_name,
+            starts_with("motivation"),
+            starts_with("past_applications"),
+            team_coordinator_tasks,
+            d4gv_participation
+        ) %>%
+        arrange(applicant_id)
+    wide
+}
+
+
+build_gs_upload <- function(roles_skills, demographics, other_quali) {
+    roles_skills %>%
+        left_join(demographics, by = "applicant_id") %>%
+        left_join(other_quali, by = "applicant_id") %>%
+        dplyr::select(
+            applicant_id,
+            gender,
+            project_id,
+            project_role,
+            past_applications,
+            pa_score,
+            skills_mean_self = mean_skills
+        ) %>%
+        arrange(gender, applicant_id, project_id, project_role) 
+}

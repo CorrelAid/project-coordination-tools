@@ -3,9 +3,12 @@ params:
   project_id: "2026-05-MIC"
   folder: "projects/2026-05-MIC"
   applicant_id: 1901
-  by_role: FALSE
   role: 
-  anon: FALSE
+  by_role: FALSE
+  file_role_profiles_long:
+  file_applicant_project_roles:
+  file_applicant_wide:
+  file_applicant_skill_ratings:
 output: rmdformats::robobook
 ---
 <!-- THIS FILE IS NOT SUPPOSED TO BE KNITTED BY HAND
@@ -27,20 +30,20 @@ library(forcats)
 library(correltools)
 library(stringr)
 
-source("viz.R")
+source(here::here("templates", "viz.R"))
 
 # metadata: role profiles
-role_profiles <- readr::read_csv(here::here(params$folder, "data/role_profiles_long.csv")) %>% 
+role_profiles <- readr::read_csv(params$file_role_profiles_long) %>% 
   filter(project_id == params$project_id)
 
 # contains all applications to all projects
-gs_upload <- readr::read_csv(here::here(params$folder, "data/gs_upload.csv")) 
+gs_upload <- readr::read_csv(params$file_applicant_project_roles) 
 roles_df <- gs_upload %>% 
   filter(project_id == params$project_id) %>% 
   select(applicant_id, project_id, project_role)
   
 # applicant data
-wide <- readr::read_csv(here::here(params$folder, "data/wide.csv"))
+wide <- readr::read_csv(params$file_applicant_wide)
 a <- wide |> 
   filter(applicant_id == params$applicant_id) %>% 
   as.list()
@@ -51,7 +54,7 @@ a$roles <- roles_df %>%
   select(-applicant_id)
 
 # self assessment
-ratings <- readr::read_csv(here::here(params$folder, "data/ratings.csv"))
+ratings <- readr::read_csv(params$file_applicant_skill_ratings)
 a$ratings <- ratings %>% 
   filter(applicant_id == params$applicant_id) %>% 
   select(-applicant_id)

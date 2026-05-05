@@ -1,155 +1,206 @@
 library(targets)
-library(dotenv)
-library(magrittr)
-
-# load all custom functions
-tar_source("R")
-
-FOLDER <- here::here("projects", "example")
-LOAD_SELECTED <- FALSE
-LOAD_FROM_KOBO <- TRUE
+library(tarchetypes)
+library(here)
+library(stringr)
 
 tar_option_set(
   packages = c(
-    "tidyr",
     "dplyr",
+    "tidyr",
     "readr",
-    "stringr", #tidyverse suite
+    "stringr",
     "kbtbr"
   )
 )
 
+# load your functions
+tar_source("R")
+
+FOLDER <- here::here("projects", "example")
+
 list(
-  # SETUP
+
+  # -----------------------
+  # CONFIG
+  # -----------------------
   tar_target(
     config,
     {
       dotenv::load_dot_env(here::here(FOLDER, ".env"))
       list(
-        PROJECT_IDS = Sys.getenv("PROJECT_IDS") %>% stringr::str_split_1(","),
-        KOBO_SURVEY_MATCH = Sys.getenv("PROJECT_IDS"),
-        KOBO_SURVEY_ID = Sys.getenv("KOBO_SURVEY_ID"),
-        GSHEET = Sys.getenv("GSHEET"),
-        LOAD_FROM_KOBO = LOAD_FROM_KOBO,
-        LOAD_SELECTED = LOAD_SELECTED
-        
+        project_ids = stringr::str_split_1(Sys.getenv("PROJECT_IDS"), ","),
+        survey_id   = Sys.getenv("KOBO_SURVEY_ID"),
+        gsheet      = Sys.getenv("GSHEET")
       )
-    },
-    cue = tar_cue(mode = "always")  # always read
+    }
   ),
-  tar_target(kobo, create_kobo()),
 
-
-  # ROLE PROFILES FROM XLSFORM GOOGLE SHEETS
+  # -----------------------
+  # INPUT DATA
+  # -----------------------
   tar_target(
-    role_profiles_downloaded,
+    kobo,
+    create_kobo()
+  ),
+
+  tar_target(
+    role_profiles_file,
     here::here(FOLDER, "data", "role_profiles.csv"),
     format = "file"
   ),
-  tar_target(role_profiles_wide, read_role_profiles(role_profiles_downloaded)),
-  tar_target(role_profiles_long, make_role_profiles_long(role_profiles_wide)),
+
   tar_target(
-    saved_role_profiles,
-    save_role_profiles(role_profiles_long),
-    format = "file"
+    role_profiles_long,
+    role_profiles_file |>
+      readr::read_csv() |>
+      make_role_profiles_long()
   ),
 
-  # LOAD DATA FROM KOBO AND INITIAL CLEANING
-  tar_target(applications_raw, get_applications(kobo, config$KOBO_SURVEY_ID)),
-  tar_target(applications_clean, clean_applications_raw(applications_raw)),
-
-  # EXTRACT DIFFERENT DATASETS FOR DATA WRANGLING
-  # mostly "longifying"
   tar_target(
-    project_roles_choices_long,
+    applications_raw,
+    get_applications(kobo, config$survey_id)
+  ),
+
+  tar_target(
+    applications_clean,
+    clean_applications_raw(applications_raw)
+  ),
+
+  # -----------------------
+  # DERIVED DATA
+  # -----------------------
+  tar_target(
+    applicant_project_roles_df,
     make_project_roles_long(applications_clean)
   ),
-  tar_target(skill_ratings_long, make_skill_ratings_long(applications_clean)),
-  tar_target(demographics, make_demographics(applications_clean)),
-  tar_target(other_quali, make_other_qualifications(applications_clean)),
 
-  # MATCH RELEVANT SKILLS FOR EACH ROLE
   tar_target(
-    roles_skills,
+    applicant_skill_ratings_df,
+    make_skill_ratings_long(applications_clean)
+  ),
+
+  tar_target(
+    applicant_demographics_df,
+    make_demographics(applications_clean)
+  ),
+
+  tar_target(
+    applicant_other_quali_df,
+    make_other_qualifications(applications_clean)
+  ),
+
+  tar_target(
+    applicant_project_roles_avg_skill_rating_df,
     calculate_skill_rating_per_role(
-      project_roles_choices_long,
+      applicant_project_roles_df,
       role_profiles_long,
-      skill_ratings_long
+      applicant_skill_ratings_df
     )
   ),
 
-  # JOIN + SAVE
+  # -----------------------
+  # FINAL DATA PRODUCTS (OBJECTS)
+  # -----------------------
   tar_target(
-    saved_gs_upload,
-    command = save_gs_upload(
-      roles_skills,
-      demographics,
-      other_quali,
-      here::here(FOLDER, "data", "gs_upload.csv")
-    ), 
-    format = "file"
+    gs_upload_df,
+    build_gs_upload(
+      applicant_project_roles_avg_skill_rating_df,
+      applicant_demographics_df,
+      applicant_other_quali_df
+    )
   ),
-  tar_target(saved_wide, save_wide(demographics, other_quali, here::here(FOLDER, "data", "wide.csv")),
-             format = "file"),
+
   tar_target(
-    saved_ratings,
-    save_ratings(skill_ratings_long, here::here(FOLDER, "data", "ratings.csv")),
+    wide_df,
+    build_wide(
+      applicant_demographics_df,
+      applicant_other_quali_df
+    )
+  ),
+
+  tar_target(
+    mapping_df,
+    applicant_demographics_df |> dplyr::select(-gender)
+  ),
+
+  # -----------------------
+  # FILE OUTPUTS
+  # -----------------------
+  tar_target(
+    file_applicant_project_roles,
+    write_csv_target(gs_upload_df, here::here(FOLDER, "data", "applicant_project_roles.csv")),
     format = "file"
   ),
 
+  tar_target(
+    file_applicant_wide,
+    write_csv_target(wide_df, here::here(FOLDER, "data", "applicant_wide.csv")),
+    format = "file"
+  ),
 
   tar_target(
-    mapping,
+    file_applicant_skill_ratings,
+    write_csv_target(applicant_skill_ratings_df, here::here(FOLDER, "data", "applicant_skill_ratings.csv")),
+    format = "file"
+  ),
+
+  tar_target(
+    file_role_profiles_long,
+    write_csv_target(role_profiles_long, here::here(FOLDER, "data", "role_profiles_long.csv")),
+    format = "file"
+  ),
+
+  tar_target(
+    file_mapping,
+    write_csv_target(mapping_df, here::here(FOLDER, "data", "mapping.csv")),
+    format = "file"
+  ),
+
+  # -----------------------
+  # SELECTED APPLICANTS
+  # -----------------------
+  tar_target(
+    selected_df,
     {
-      path <- here::here(FOLDER, "data", "mapping.csv")
-      demographics %>% select(-gender) %>% readr::write_csv(path)
-      return(path)
-    },
+      tryCatch(load_selected(config$gsheet), error = function(e) tibble::tibble())
+    }
+  ),
+
+  tar_target(
+    selected_file,
+    write_csv_target(selected_df, file.path(FOLDER, "data", "selected.csv")),
     format = "file"
-  ),  
+  ),
+
+  # -----------------------
   # REPORTS
-  # anonymized
-  tar_target(
-    template_single,
-    here::here("templates", "template_application_single.Rmd"),
-    format = "file"
-  ),
-  tar_target(
-    template_application_report,
+  # -----------------------
+
+  tarchetypes::tar_render(
+    report_by_role,
     here::here("templates", "template_application_report.Rmd"),
-    format = "file"
-  ),
-  tar_target(
-    template_selected_report,
-    here::here("templates", "template_selected_report.Rmd"),
-    format = "file"
-  ),
-
-  tar_target(
-    report_anon_by_appl,
-    command = make_application_report(config$PROJECT_IDS, FOLDER, template_application_report, by_role = FALSE),
-    format = "file"
-  ),
-  tar_target(
-    report_anon_by_role,
-    command = make_application_report(config$PROJECT_IDS, FOLDER, template_application_report, by_role = TRUE),
-    format = "file"
+    params = list(
+      project_id = config$project_ids,
+      file_role_profiles_long = file_role_profiles_long,
+      file_applicant_project_roles = file_applicant_project_roles,
+      file_applicant_wide = file_applicant_wide,
+      file_applicant_skill_ratings = file_applicant_skill_ratings,
+      by_role = TRUE
+    ),
+    output_file = here::here(FOLDER, "report-by-role.html")
   ),
 
-  # selected team with names
-  tar_target(
-    selected,
-    {
-      path <- here::here(FOLDER, "data", "selected.csv")
-      load_selected(config$GSHEET) %>% readr::write_csv(path)
-      return(path)
-    },
-    format = "file",
-    cue = tar_cue(mode = ifelse(LOAD_SELECTED, "always", "thorough"))
-  ),
-  tar_target(
-    report_selected_team,
-    command = make_selected_report(config$PROJECT_IDS, FOLDER, template_selected_report),
-    format = "file"
+  tarchetypes::tar_render(
+    report_by_applicant,
+    here::here("templates", "template_application_report.Rmd"),
+    params = list(
+      project_id = config$project_ids,
+      file_role_profiles_long = file_role_profiles_long,
+      file_applicant_project_roles = file_applicant_project_roles,
+      file_applicant_wide = file_applicant_wide,
+      file_applicant_skill_ratings = file_applicant_skill_ratings,
+      by_role = FALSE
+    ),
+    output_file = here::here(FOLDER, "report-by-applicant.html")
   )
 )
