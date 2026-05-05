@@ -1,0 +1,105 @@
+---
+params:
+  project_id: "2026-12-TES"
+  folder: "projects/example"
+  file_role_profiles_long:
+  file_applicant_project_roles:
+  file_applicant_wide:
+  file_applicant_skill_ratings:
+  by_role: FALSE
+output: 
+  rmdformats::robobook:
+    toc_depth: 3
+title: "Applications for project `r toupper(params$project_id)`"
+---
+<!-- THIS FILE IS NOT SUPPOSED TO BE KNITTED DIRECTLY
+    INSTEAD IT IS KNIT FROM _targets.R
+    IF YOU WANT TO KNIT THIS BY HAND, SET THE PARAMETERS ACCORDINGLY
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r setup-data-report, include=FALSE, message=FALSE}
+library(dplyr)
+library(patchwork)
+library(correltools)
+library(ggplot2)
+library(forcats)
+
+
+roles_df <- readr::read_csv(params$file_applicant_project_roles) 
+roles_df <- roles_df %>% 
+  filter(project_id == params$project_id) %>% 
+  select(applicant_id, gender, project_id, project_role) 
+```
+
+**Report metadata**:
+
+- time generated: `r format(Sys.time(), '%Y-%m-%d, %H:%m:%S UTC%z')`
+- applications included: `r unique(roles_df$applicant_id) %>% length()`
+
+# Introduction
+### Helpful links for team selection committee
+- [Team selection criteria and best practices](https://docs.correlaid.org/project-manual/project-coordinators/ideation-finding-a-team#team-selection-call)
+- [Explanation of the experience scale](https://docs.correlaid.org/project-manual/data4good-projects#experience-scale) ("Beginner", "User", "Advanced", "Expert") 
+
+
+```{r knit-single, results='asis', echo=FALSE}
+
+if (params$by_role) {
+  for (project_role in (roles_df$project_role %>% unique())) {
+    cat(sprintf("# %s\n", project_role))
+    
+    # only applications for this role
+    appl_sorted <- roles_df %>% 
+      dplyr::filter(project_role == .env$project_role) %>% 
+      arrange(gender, applicant_id)
+
+      res <- lapply(appl_sorted$applicant_id, function(id) {
+        
+        params <- list(
+            applicant_id = id, 
+            project_id = params$project_id, 
+            file_role_profiles_long = params$file_role_profiles_long,
+            file_applicant_project_roles = params$file_applicant_project_roles,
+            file_applicant_wide = params$file_applicant_wide,
+            file_applicant_skill_ratings = params$file_applicant_skill_ratings,
+            by_role = params$by_role,
+            role = project_role)
+        knitr::knit_child(
+          here::here("templates", 'template_application_single.Rmd'), envir = environment(), quiet = TRUE
+        )
+
+      })
+    cat(unlist(res), sep = '\n')
+  }
+} else {
+
+  # only applications for this role
+  appl_sorted <- roles_df %>% 
+    distinct(gender, applicant_id) %>% 
+    arrange(gender, applicant_id)
+    
+  res <- lapply(appl_sorted$applicant_id, function(id) {
+    params <- list(
+      applicant_id = id, 
+      project_id = params$project_id, 
+      file_role_profiles_long = params$file_role_profiles_long,
+      file_applicant_project_roles = params$file_applicant_project_roles,
+      file_applicant_wide = params$file_applicant_wide,
+      file_applicant_skill_ratings = params$file_applicant_skill_ratings,
+      by_role = params$by_role)
+    knitr::knit_child(
+      here::here("templates", 'template_application_single.Rmd'), envir = environment(), quiet = TRUE
+    )
+  })
+  cat(unlist(res), sep = '\n')
+}
+
+
+
+```
+

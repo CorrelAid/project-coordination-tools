@@ -1,0 +1,159 @@
+---
+params:
+  project_id: "2026-05-MIC"
+  folder: "projects/2026-05-MIC"
+  by_role: false
+  anon: false
+output: rmdformats::robobook
+---
+
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+library(googlesheets4)
+library(dplyr)
+library(ggplot2)
+library(correltools)
+library(forcats)
+library(readr)
+source("viz.R")
+
+rating_mapping <- load_rating_mapping()
+selected_people <- readr::read_csv(here::here(params$folder, "data", "selected.csv"))
+```
+# Overview
+
+```{r}
+mapping <- readr::read_csv(here::here(params$folder, "data/mapping.csv"))
+ratings <- readr::read_csv(here::here(params$folder, "data/ratings.csv"))
+
+ratings %>% filter(skill == "rstats") %>% 
+  arrange(desc(rating_num)) %>% 
+  filter(!applicant_id %in% selected_people$applicant_id)
+rating_sel <- ratings %>% 
+  left_join(selected_people) %>% 
+  filter(applicant_id %in% selected_people$applicant_id)
+```
+
+
+```{r}
+relevant <- c("shiny", "rstats", "software_testing", "survey_statistics")
+rating_sel %>% 
+  arrange(question, skill) %>% 
+  filter(skill %in% relevant) %>% 
+    mutate(pos = 1:n()) %>% 
+ggplot(aes(y = fct_reorder(skill, -pos), fill = as.factor(first_name), group = role, x = rating_num)) +
+    geom_col(position = "stack")+
+    scale_color_correlaid_d()+
+    theme(
+      panel.grid.minor.y = element_blank(),
+      panel.grid.major.y = element_blank(), 
+      legend.position = "bottom"
+    ) +
+    labs(y = NULL, color = "")+
+  facet_wrap(~role)
+
+```
+
+```{r}
+
+plot_df <- ratings %>%
+  filter(skill != "tools_other") %>%
+  filter(applicant_id %in% selected_people$applicant_id) %>%
+  mutate(skill = fct_inorder(skill))
+
+ggplot(plot_df, aes(
+  x = skill,
+  y = rating_num,
+  group = applicant_id,
+  color = as.factor(applicant_id)
+)) +
+  geom_point() +
+  coord_polar() +
+  scale_color_correlaid_d() +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(size = 10),
+    legend.position = "bottom"
+  ) +
+  labs(color = "Applicant", y = "Level", x = NULL)
+```
+
+```{r}
+ratings %>% 
+  filter(skill != "tools_other") %>% 
+  filter(applicant_id %in% selected_people$applicant_id) %>% 
+  arrange(question, skill) %>% 
+  mutate(pos = 1:n()) %>% 
+  
+  ggplot(aes(
+    y = forcats::fct_reorder(skill, -pos),
+    x = rating_num
+  )) +
+  
+  # individual points
+  geom_point(
+    aes(color = as.factor(applicant_id)),
+    alpha = 0.7,
+    position = position_jitter(height = 0.1)
+  ) +
+  
+  # mean per skill
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    size = 4,
+    color = "black"
+  ) +
+  
+  scale_color_correlaid_d() +
+  
+  scale_x_continuous(
+    "level",
+    limits = c(min(rating_mapping$rating_num), max(rating_mapping$rating_num)),
+    breaks = seq(min(rating_mapping$rating_num), max(rating_mapping$rating_num), 1),
+    labels = rating_mapping$rating
+  ) +
+  
+  theme(
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    legend.position = "bottom"
+  ) +
+  
+  labs(y = NULL, color = "Applicant")
+```
+
+```{r}
+selected_ratings <- ratings %>% 
+  filter(applicant_id %in% c(selected_people$applicant_id))
+```
+
+```{r}
+selected_ratings %>% filter(skill == "survey_statistics")
+```
+
+# People
+
+```{r results='asis'}
+
+# only applications for this role
+appl_sorted <- selected_people %>% 
+  arrange(role)
+  
+res <- lapply(appl_sorted$applicant_id, function(id) {
+  a <- appl_sorted %>% filter(applicant_id == id)
+  params <- list(applicant_id = id, project_id = params$project_id, folder = params$folder, role = a$role, first_name = a$first_name, by_role = FALSE)
+  knitr::knit_child(
+    'template_selected_single.Rmd', envir = environment(), quiet = TRUE
+  )
+})
+cat(unlist(res), sep = '\n')
+
+```
+
+
+
+
