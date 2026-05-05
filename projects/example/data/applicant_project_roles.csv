@@ -1,0 +1,4 @@
+applicant_id,gender,project_id,project_role,past_applications,pa_score,skills_mean_self
+1915,female,2026-12-EXA,shiny_dev_flourish_uiux,first_application,1,2.08
+1915,female,2026-12-EXA,team_coordinator,first_application,1,2.57
+1916,not_disclosed,2026-12-TES,team_trainee,not_successful,2,1.62

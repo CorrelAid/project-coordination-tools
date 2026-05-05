@@ -1,0 +1,50 @@
+list_name,name,label::Deutsch (de),label::English (en),project_id,Tools,TechniquesTopics,RefDropdownTools,RefDropdownTechniquesTopics
+cl-role-2026-12-EXA,volunteer_integrity_accuracy,Volunteer Statistical Integrity and Accuracy ,Volunteer Statistical Integrity and Accuracy ,2026-12-EXA,"rstats, git, shiny, crunch","data_cleaning, survey_research, survey_statistics, software_testing",angular,apis
+cl-role-2026-12-EXA,shiny_dev_flourish_uiux,"Shiny Developer - Focus Flourish, UI & UX","Shiny Developer - Focus Flourish, UI & UX",2026-12-EXA,"flourish, git, rstats, shiny, css, crunch","apis, working_agile, software_development, dashboard_development, data_visualization, ux, survey_statistics",crunch,audio_data_processing
+cl-role-2026-12-EXA,team_coordinator,Teamkoordinator*in,Team coordinator,2026-12-EXA,"github_projects_issues, trello","project_management, working_agile, team_coordination, kanban, diversity",css,automation
+cl-role-2026-12-EXA,team_trainee,Team Trainee,Team trainee,2026-12-EXA,"rstats, shiny, git","dashboard_development, software_development, ux, ux_design, data_visualization",excel,classification
+cl-role-2026-12-TES,shiny_dev_code_dataflows,Shiny Developer - Focus Code Quality & Data Flows,Shiny Developer - Focus Code Quality & Data Flows,2026-12-TES,"flourish, git, rstats, shiny, crunch","apis, working_agile, software_development, dashboard_development, data_visualization, ux, database_management, devops, survey_statistics",flourish,clustering
+cl-role-2026-12-TES,team_trainee,Team Trainee,Team trainee,2026-12-TES,"rstats, shiny, git","dashboard_development, software_development, ux, ux_design, data_visualization",git,dashboard_development
+cl-role-2026-12-TES,team_coordinator,Teamkoordinator*in,Team coordinator,2026-12-TES,"github_projects_issues, trello","project_management, working_agile, team_coordination, kanban, diversity",github_projects_issues,data_anonymization
+,,,,,,,google_apps_script,data_cleaning
+,,,,,,,google_forms,data_collection
+,,,,,,,google_sheets,data_engineering
+,,,,,,,html,data_ethics
+,,,,,,,javascript,data_management
+,,,,,,,javascript_frontend,data_protection
+,,,,,,,jupyter,data_security
+,,,,,,,lamapoll,data_storytelling
+,,,,,,,looker_studio,data_visualization
+,,,,,,,make_com,database_management
+,,,,,,,nodejs,deployment
+,,,,,,,powerbi,descriptive_statistics
+,,,,,,,python,devops
+,,,,,,,quarto,diversity
+,,,,,,,rating_technologies_tools_header,education_research
+,,,,,,,react,ethical_critical_ai
+,,,,,,,rmarkdown,image_data_processing
+,,,,,,,rstats,indicator_development
+,,,,,,,shiny,inferential_statistics
+,,,,,,,sosci_survey,kanban
+,,,,,,,sql,neural_networks_and_deep_learn
+,,,,,,,streamlit,nlp
+,,,,,,,svelte,project_management
+,,,,,,,trello,rating_techniques_header
+,,,,,,,vue_js,regressions_and_modelling
+,,,,,,,,research_design
+,,,,,,,,resilience_mental_health
+,,,,,,,,software_development
+,,,,,,,,software_testing
+,,,,,,,,static_reports
+,,,,,,,,static_websites
+,,,,,,,,survey_design
+,,,,,,,,survey_research
+,,,,,,,,survey_statistics
+,,,,,,,,team_coordination
+,,,,,,,,theories_of_change_development
+,,,,,,,,ux
+,,,,,,,,ux_design
+,,,,,,,,web_design
+,,,,,,,,web_dev
+,,,,,,,,wirkungsmessung
+,,,,,,,,working_agile

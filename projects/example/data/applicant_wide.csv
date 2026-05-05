@@ -1,0 +1,3 @@
+applicant_id,gender,first_name,last_name,motivation_skills,motivation_why,motivation_tt,past_applications,team_coordinator_tasks,d4gv_participation
+1915,female,Foo,Bar,test,test,NA,first_application,NA,git_advanced fit_tutor_de
+1916,not_disclosed,Foo,Baz,test,test,test,not_successful,help_team,git_basics fit_tutor_de data4good_projects
