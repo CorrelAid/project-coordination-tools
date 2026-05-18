@@ -174,15 +174,14 @@ make_role_profiles_long <- function(role_profiles_wide) {
         select(
             project_id,
             role = name,
-            Technologies_Tools = Tools,
-            Techniques_Topics = TechniquesTopics
+            ends_with(c("_core", "_nicetohave"))
         ) %>%
         gather(
-            Technologies_Tools:Techniques_Topics,
+            ends_with(c("_core", "_nicetohave")),
             key = "question",
             value = "skill"
         ) %>%
-        mutate(question = tolower(question)) %>%
+        tidyr::separate(question, c("question", "priority"), sep = "_") %>% 
         filter(!is.na(skill)) %>%
         separate_rows(skill, sep = ",") %>%
         mutate(skill = str_trim(skill))
