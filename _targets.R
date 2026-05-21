@@ -17,7 +17,7 @@ tar_option_set(
 tar_source("R")
 
 # CHANGE THIS!
-FOLDER <- here::here("projects", "example")
+FOLDER <- here::here("projects", "2026-06-projects")
 
 list(
 
@@ -92,7 +92,7 @@ list(
 
   tar_target(
     applicant_project_roles_avg_skill_rating_df,
-    calculate_skill_rating_per_role(
+    calculate_aggregated_skill_ratings(
       applicant_project_roles_df,
       role_profiles_long,
       applicant_skill_ratings_df
@@ -105,6 +105,15 @@ list(
   tar_target(
     gs_upload_df,
     build_gs_upload(
+      applicant_project_roles_avg_skill_rating_df,
+      applicant_demographics_df,
+      applicant_other_quali_df
+    )
+  ),
+
+  tar_target(
+    report_data,
+    build_report_data(
       applicant_project_roles_avg_skill_rating_df,
       applicant_demographics_df,
       applicant_other_quali_df
@@ -128,9 +137,14 @@ list(
   # FILE OUTPUTS
   # -----------------------
   tar_target(
-    file_applicant_project_roles,
-    write_csv_target(gs_upload_df, here::here(FOLDER, "data", "applicant_project_roles.csv")),
+    file_gs_upload,
+    write_csv_target(gs_upload_df, here::here(FOLDER, "data", "gs_upload.csv")),
     format = "file"
+  ),
+
+  tar_target(file_applicant_report_data,
+      write_csv_target(report_data, here::here(FOLDER, "data", "scored_applicants.csv")),
+      format = "file"
   ),
 
   tar_target(
@@ -181,9 +195,9 @@ list(
     report_by_role,
     here::here("templates", "template_application_report.Rmd"),
     params = list(
-      project_id = config$project_ids,
+      project_ids = config$project_ids,
       file_role_profiles_long = file_role_profiles_long,
-      file_applicant_project_roles = file_applicant_project_roles,
+      file_scored_applicants = file_applicant_report_data,
       file_applicant_wide = file_applicant_wide,
       file_applicant_skill_ratings = file_applicant_skill_ratings,
       by_role = TRUE
@@ -195,9 +209,9 @@ list(
     report_by_applicant,
     here::here("templates", "template_application_report.Rmd"),
     params = list(
-      project_id = config$project_ids,
+      project_ids = config$project_ids,
       file_role_profiles_long = file_role_profiles_long,
-      file_applicant_project_roles = file_applicant_project_roles,
+      file_scored_applicants = file_applicant_report_data,
       file_applicant_wide = file_applicant_wide,
       file_applicant_skill_ratings = file_applicant_skill_ratings,
       by_role = FALSE
