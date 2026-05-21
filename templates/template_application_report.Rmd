@@ -1,16 +1,16 @@
 ---
 params:
-  project_id: "2026-12-TES"
-  folder: "projects/example"
-  file_role_profiles_long:
-  file_applicant_project_roles:
-  file_applicant_wide:
-  file_applicant_skill_ratings:
+  project_ids: "2026-06-YFU"
+  folder: "projects/2026-06-projects"
+  file_role_profiles_long: "data/role_profiles_long.csv"
+  file_scored_applicants: "data/scored_applicants.csv"
+  file_applicant_wide: "data/applicant_wide.csv"
+  file_applicant_skill_ratings: "data/applicant_skill_ratings.csv"
   by_role: FALSE
 output: 
   rmdformats::robobook:
     toc_depth: 3
-title: "Applications for project `r toupper(params$project_id)`"
+title: "Applications for project(s) `r toupper(params$project_ids)`"
 ---
 <!-- THIS FILE IS NOT SUPPOSED TO BE KNITTED DIRECTLY
     INSTEAD IT IS KNIT FROM _targets.R
@@ -28,18 +28,42 @@ library(patchwork)
 library(correltools)
 library(ggplot2)
 library(forcats)
+library(reactable)
+source(here::here("templates", "viz.R"))
+source(here::here("R", "transform.R"))
 
+  # applicant data
+if(fs::is_absolute_path(params$file_scored_applicants)) { # knit via targets
+  applicants_scored_df <- readr::read_csv(params$file_scored_applicants) 
+} else { # interactive knitting with params default
+  applicants_scored_df <- readr::read_csv(here::here(params$folder, params$file_scored_applicants))
+}
 
-roles_df <- readr::read_csv(params$file_applicant_project_roles) 
-roles_df <- roles_df %>% 
-  filter(project_id == params$project_id) %>% 
-  select(applicant_id, gender, project_id, project_role) 
+# skill ratings
+if(fs::is_absolute_path(params$file_applicant_skill_ratings)) { # knit via targets
+  skill_ratings <- readr::read_csv(params$file_applicant_skill_ratings) 
+} else { # interactive knitting with params default
+  skill_ratings <- readr::read_csv(here::here(params$folder, params$file_applicant_skill_ratings))
+}
+
+# role profiles
+if(fs::is_absolute_path(params$file_role_profiles_long)) { # knit via targets
+  role_profiles <- readr::read_csv(params$file_role_profiles_long) 
+} else { # interactive knitting with params default
+  role_profiles <- readr::read_csv(here::here(params$folder, params$file_role_profiles_long))
+}
+
+rating_mapping <- load_rating_mapping()
+
+by_role <- params$by_role
+by_applicant <- !params$by_role
+
 ```
 
 **Report metadata**:
 
 - time generated: `r format(Sys.time(), '%Y-%m-%d, %H:%m:%S UTC%z')`
-- applications included: `r unique(roles_df$applicant_id) %>% length()`
+- applications included: `r unique(applicants_scored_df$applicant_id) %>% length()`
 
 # Introduction
 ### Helpful links for team selection committee
@@ -47,59 +71,100 @@ roles_df <- roles_df %>%
 - [Explanation of the experience scale](https://docs.correlaid.org/project-manual/data4good-projects#experience-scale) ("Beginner", "User", "Advanced", "Expert") 
 
 
-```{r knit-single, results='asis', echo=FALSE}
+```{r knit-by-role, results='asis', echo=FALSE, eval=by_role}
 
-if (params$by_role) {
-  for (project_role in (roles_df$project_role %>% unique())) {
-    cat(sprintf("# %s\n", project_role))
+project_roles <- role_profiles %>% 
+  distinct(project_id, role) %>% 
+  arrange(project_id)
+
+# loop over projects and roles
+purrr::walk2(project_roles$project_id, project_roles$role, function(project_id, project_role) {
+  cat(sprintf("# %s - %s", project_id, project_role), sep = "\n")
+  
+  project_role_applicants <- applicants_scored_df %>% 
+    filter(project_id == .env$project_id & project_role == .env$project_role)
+  
+  # loop over applicants for role
+  
+  purrr::walk(project_role_applicants$applicant_id, function(applicant_id) {
+    applicant <- project_role_applicants %>% 
+        filter(applicant_id == .env$applicant_id)
+
+    cat(sprintf("## %s - %s", applicant_id, unique(applicant$gender)), sep = "\n")
     
-    # only applications for this role
-    appl_sorted <- roles_df %>% 
-      dplyr::filter(project_role == .env$project_role) %>% 
-      arrange(gender, applicant_id)
-
-      res <- lapply(appl_sorted$applicant_id, function(id) {
-        
-        params <- list(
-            applicant_id = id, 
-            project_id = params$project_id, 
-            file_role_profiles_long = params$file_role_profiles_long,
-            file_applicant_project_roles = params$file_applicant_project_roles,
-            file_applicant_wide = params$file_applicant_wide,
-            file_applicant_skill_ratings = params$file_applicant_skill_ratings,
-            by_role = params$by_role,
-            role = project_role)
-        knitr::knit_child(
-          here::here("templates", 'template_application_single.Rmd'), envir = environment(), quiet = TRUE
-        )
-
-      })
-    cat(unlist(res), sep = '\n')
-  }
-} else {
-
-  # only applications for this role
-  appl_sorted <- roles_df %>% 
-    distinct(gender, applicant_id) %>% 
-    arrange(gender, applicant_id)
-    
-  res <- lapply(appl_sorted$applicant_id, function(id) {
+    #. knit intro for applicant
     params <- list(
-      applicant_id = id, 
-      project_id = params$project_id, 
-      file_role_profiles_long = params$file_role_profiles_long,
-      file_applicant_project_roles = params$file_applicant_project_roles,
+      folder = params$folder,
+      applicant_id = applicant_id, 
+      file_scored_applicants = params$file_scored_applicants,
       file_applicant_wide = params$file_applicant_wide,
-      file_applicant_skill_ratings = params$file_applicant_skill_ratings,
       by_role = params$by_role)
-    knitr::knit_child(
-      here::here("templates", 'template_application_single.Rmd'), envir = environment(), quiet = TRUE
+    
+    intro <- knitr::knit_child(
+      here::here("templates", 'applicant_intro.Rmd'), envir = environment(), quiet = TRUE
     )
+    cat(intro, sep = "\n")
+    
+    # get self ratings of applicant for role to plot
+    a_ratings_role <- skill_ratings %>% 
+      filter(applicant_id == .env$applicant_id) %>% 
+      get_relevant_skill_ratings_for_project_role(role_profiles, project_id, project_role)
+
+    #cat(sprintf("mean rating: %.2f", mean(a_ratings_role$rating_num, na.rm = TRUE)))
+    p <- skill_plot(a_ratings_role, rating_mapping, "priority")
+    print(p)
+    cat("\n", sep = "\n")
   })
-  cat(unlist(res), sep = '\n')
-}
-
-
-
+})
 ```
+
+
+```{r knit-by-appl, results='asis', echo=FALSE, eval=by_applicant}
+# BY APPLICANT
+# loop over applicant_id 
+# #loop over role, project within here
+# always pass down role, id, 
+purrr::walk(unique(applicants_scored_df$applicant_id), function(applicant_id) {
+  applicant_roles <- applicants_scored_df %>% 
+    filter(applicant_id == .env$applicant_id)
+
+  cat(sprintf("# %s - %s", applicant_id, unique(applicant_roles$gender)))
+  
+  #. knit intro for applicant
+  params <- list(
+    folder = params$folder,
+    applicant_id = applicant_id, 
+    file_scored_applicants = params$file_scored_applicants,
+    file_applicant_wide = params$file_applicant_wide,
+    by_role = params$by_role)
+  
+  intro <- knitr::knit_child(
+    here::here("templates", 'applicant_intro.Rmd'), envir = environment(), quiet = TRUE
+  )
+  cat(intro, sep = "\n")
+  
+  cat("### All self-rated skills", sep = "\n")
+  all_skills_plot <- skill_plot(skill_ratings %>% 
+      filter(applicant_id == .env$applicant_id), rating_mapping, "question")
+  print(all_skills_plot)
+  cat("\n", sep = "\n")
+  # loop over all roles the applicant applied to       
+  purrr::walk2(applicant_roles$project_id, applicant_roles$project_role, 
+               function(project_id, project_role) {
+    cat(sprintf("## %s - %s\n", project_id, project_role), sep = "\n")
+
+    # get self ratings of applicant for role to plot
+    a_ratings_role <- skill_ratings %>% 
+      filter(applicant_id == .env$applicant_id) %>% 
+      get_relevant_skill_ratings_for_project_role(role_profiles, project_id, project_role)
+
+    p <- skill_plot(a_ratings_role, rating_mapping, "priority")
+    print(p)
+    cat("\n", sep = "\n")
+  })
+   cat("\n")
+})
+```
+
+
 
