@@ -214,8 +214,17 @@ list(
       file_scored_applicants = file_applicant_report_data,
       file_applicant_wide = file_applicant_wide,
       file_applicant_skill_ratings = file_applicant_skill_ratings,
-      by_role = FALSE
     ),
     output_file = here::here(FOLDER, "report-by-applicant.html")
+  ),
+  
+  tarchetypes::tar_render_rep(
+    report_teams,
+    here::here("templates", "template_selected_report.Rmd"),
+    params = tibble::tibble(
+      project_id              = config$project_ids,
+      folder = rep(FOLDER, length(config$project_ids)),
+      output_file             = here::here(FOLDER, paste0("team-", config$project_ids, ".html"))
+    )
   )
 )

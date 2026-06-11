@@ -2,7 +2,6 @@
 params:
   folder: "projects/example"
   applicant_id: 1916
-  by_role: FALSE
   file_scored_applicants: "data/scored_applicants.csv"
   file_applicant_wide: 'data/applicant_wide.csv'
 output: rmdformats::robobook
@@ -59,11 +58,11 @@ a$roles <- scored_applicants %>%
 ```
 
 
-**Gender**: `r stringr::str_replace(a$gender, '_', ' ')`
 
 
 **All applications:**
 ```{r}
+# **Gender**: `r stringr::str_replace(a$gender, '_', ' ')`
 # Render a bar chart with a label on the left
 bar_chart <- function(label, width = "100%", height = "1rem", fill = "#00bfc4", background = NULL) {
   bar <- div(style = list(background = fill, width = width, height = height))
@@ -136,19 +135,36 @@ if (a$past_applications == 'first_application') {
 ```
 
 
+```{r}
+# function to clean txt
+clean_md <- function(txt) {
+  txt <- stringr::str_replace_all(txt, "\n", "\n\n") # proper line breaks
+  txt <- stringr::str_replace_all(txt, "#{1,}\\s(.+)", "**\\1**") # when people use md to give headings -> this messes with our headers -> replace with bold 
+  txt
+}
+```
+
 #### What skills qualify you?
 
-`r knitr::knit(text = a$motivation_skills)`
+```{r results='asis'}
+mot_skills <- knitr::knit(text = clean_md(a$motivation_skills))
+cat(mot_skills)
+```
 
 #### Why do you want to get involved?
 
-`r knitr::knit(text = a$motivation_skills)`
+```{r results='asis'}
+mot_why <- knitr::knit(text = clean_md(a$motivation_why))
+cat(mot_why)
+```
+
 
 #### What do you want to learn as a team trainee?
 
 ```{r results='asis'}
 if ("team_trainee" %in% a$roles$project_role) {
-  cat(a$motivation_tt)
+  mot_tt <- knitr::knit(text = clean_md(a$motivation_tt))
+  cat(mot_tt)
 } else {
   cat("does not apply")
 }

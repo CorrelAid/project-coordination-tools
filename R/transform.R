@@ -150,7 +150,7 @@ get_relevant_skill_ratings_for_project_role <- function(
 ) {
     role_profile <- role_profiles %>%
         filter(
-            project_id == .env$project_id,
+            project_id == .env$project_id & 
             role == .env$project_role
         ) %>%
         rename(project_role = role)
@@ -182,7 +182,7 @@ calculate_aggregated_skill_ratings <- function(
                 group_by(applicant_id, project_id, project_role, priority) %>%
                 summarize(
                     mean_rating = round(mean(rating_num, na.rm = TRUE), 2),
-                    max_score = n() * 4,
+                    max_score = n() * 4, # times four because of beginner, user, advanced, expert
                     sum_score = sum(rating_num, na.rm = TRUE),
                     score = round(sum_score / max_score * 5, 2) # normalize to 0-5 to align with motivation scale --> is it basically the mean rescaled to 0 - 5?
                 ) %>%
