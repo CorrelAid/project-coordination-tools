@@ -1,3 +1,6 @@
-applicant_id,gender,first_name,last_name,motivation_skills,motivation_why,motivation_tt,past_applications,team_coordinator_tasks,d4gv_participation
-1915,female,Foo,Bar,test,test,NA,first_application,NA,git_advanced fit_tutor_de
-1916,not_disclosed,Foo,Baz,test,test,test,not_successful,help_team,git_basics fit_tutor_de data4good_projects
+applicant_id,gender,first_name,last_name,motivation_skills,motivation_why,motivation_tt,past_applications,past_applications_details,team_coordinator_tasks,d4gv_participation,d4gv_count,german_skills
+1915,female,Foo,Bar,test,test,NA,first_application,NA,NA,git_advanced fit_tutor_de,2,NA
+1916,not_disclosed,Foo,Baz,test,test,test,not_successful,NA,help_team,git_basics fit_tutor_de data4good_projects,3,NA
+1976,not_disclosed,Mickey,Moo,i bring skills,i am motivated,test test,not_successful,foo,overview_timeline_goals contact_person_npo_partners interface_correlaid_employees,git_advanced fit_tutor_en,2,NA
+2012,not_disclosed,Ljjj,ffff,rste,wrewer,NA,successful,NA,NA,git_advanced fit_tutor_en,2,NA
+2013,not_disclosed,fwer,wrewe,werwre,ferw,NA,not_successful,NA,NA,git_advanced fit_tutor_en,2,b1

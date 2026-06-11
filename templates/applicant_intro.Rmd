@@ -1,0 +1,175 @@
+---
+params:
+  folder: "projects/example"
+  applicant_id: 1916
+  file_scored_applicants: "data/scored_applicants.csv"
+  file_applicant_wide: 'data/applicant_wide.csv'
+output: rmdformats::robobook
+---
+<!-- THIS FILE IS NOT SUPPOSED TO BE KNITTED BY HAND
+    INSTEAD IT IS KNIT AUTOMATICALLY 
+    BY THE APPLICATIONS_REPORT.RMD FILE FOR EACH APPLICANT.
+    YOU CAN EDIT THIS FILE IF YOU WANT TO CHANGE THE INFORMATION DISPLAYED FOR EACH APPLICANT
+-->
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+
+library(dplyr)
+library(tidyr)
+library(tibble)
+library(reactable)
+library(htmltools)
+library(ggplot2)
+library(readr)
+library(forcats)
+library(correltools)
+library(stringr)
+
+# contains all applications to all projects
+if(fs::is_absolute_path(params$file_applicant_wide)) {
+  # knit via targets
+  # applicant data
+  scored_applicants <- readr::read_csv(params$file_scored_applicants)
+} else {
+  # direct knitting
+  scored_applicants <- readr::read_csv(here::here(params$folder, params$file_scored_applicants))
+}
+
+  
+if(fs::is_absolute_path(params$file_applicant_wide)) {
+  # knit via targets
+  # applicant data
+  wide <- readr::read_csv(params$file_applicant_wide)
+} else {
+  # direct knitting
+  wide <- readr::read_csv(here::here(params$folder, params$file_applicant_wide))
+}
+
+a <- wide |> 
+  filter(applicant_id == params$applicant_id) %>% 
+  as.list()
+
+# all applications of applicant
+a$roles <- scored_applicants %>% 
+  filter(applicant_id == params$applicant_id) %>% 
+  select(-applicant_id)
+```
+
+
+
+
+**All applications:**
+```{r}
+# **Gender**: `r stringr::str_replace(a$gender, '_', ' ')`
+# Render a bar chart with a label on the left
+bar_chart <- function(label, width = "100%", height = "1rem", fill = "#00bfc4", background = NULL) {
+  bar <- div(style = list(background = fill, width = width, height = height))
+  chart <- div(style = list(flexGrow = 1, marginLeft = "0.5rem", background = background), bar)
+  div(style = list(display = "flex", alignItems = "center"), sprintf("%.2f", label), chart)
+}
+
+
+# count no of applications for all roles
+roles_count <- scored_applicants %>% 
+  count(project_id, project_role, name = "n_appl")
+
+# palette 
+pal_n_appl <- scales::col_numeric(
+  # less applications , the "better" for the applicant because that means the "demand" for them is high. we need them to fill the role
+  palette = c(correltools:::correlaid_colors$qualitative["green"], "#fee08b", correltools:::correlaid_colors$qualitative["red"]),
+  domain = c(0, max(roles_count$n_appl)) # in theory a role can have no applications
+)
+
+pal_bar <- scales::col_numeric(
+  palette = c(correltools:::correlaid_colors$qualitative["red"], "#fee08b", correltools:::correlaid_colors$qualitative["green"]),
+  domain = c(0, 5) # one to five is the scale (see transform.R)
+)
+
+
+a$roles %>% 
+  left_join(roles_count, by = c("project_id", "project_role")) %>% 
+  select(project_id, project_role, score_core, score_nicetohave, n_appl) %>% 
+  reactable::reactable(columns = list(
+    n_appl = colDef(name = "# applications", style = function(value) list(background = pal_n_appl(value))),
+    score_core = colDef(name = "score_core", align = "left", cell = function(value) {
+      width <- paste0(value / 5 * 100, "%")
+      bar_chart(value, width = width, fill = pal_bar(value), background = "#e1e1e1")
+    }),
+    score_nicetohave = colDef(name = "score_nicetohave", align = "left", cell = function(value) {
+      width <- paste0(value / 5 * 100, "%")
+      bar_chart(value, width = width, fill = pal_bar(value), background = "#e1e1e1")
+    })
+  ))
+```
+
+**German skills**: `r a$german_skills`
+
+**D4GV Workshops**: `r a$d4gv_participation`
+
+**Team coordinator tasks**: 
+```{r results = 'asis'}
+if ("team_coordinator" %in% a$roles$project_role) {
+  cat("applied as team coordinator.")
+} else {
+  cat(a$team_coordinator_tasks)
+}
+```
+
+
+**Past applications**
+
+```{r results='asis'}
+if (is.na(a$past_applications)) {
+  cat('No information about past applications was collected')
+}
+
+if (a$past_applications == 'first_application') {
+  cat('The applicant is applying to a CorrelAid project for the **first time**.')
+} else if(a$past_applications == 'successful') {
+    cat(glue::glue('The applicant has **successfully applied** to a CorrelAid project before.'))
+} else if(a$past_applications == 'not_successful') {
+    cat(glue::glue("The applicant was **not successful** with their application(s) so far. They specified the following when asked about when/where they have applied in the past:\n\n > {a$past_applications_details}"))
+}
+```
+
+
+```{r}
+# function to clean txt
+clean_md <- function(txt) {
+  txt <- stringr::str_replace_all(txt, "\n", "\n\n") # proper line breaks
+  txt <- stringr::str_replace_all(txt, "#{1,}\\s(.+)", "**\\1**") # when people use md to give headings -> this messes with our headers -> replace with bold 
+  txt
+}
+```
+
+#### What skills qualify you?
+
+```{r results='asis'}
+mot_skills <- knitr::knit(text = clean_md(a$motivation_skills))
+cat(mot_skills)
+```
+
+#### Why do you want to get involved?
+
+```{r results='asis'}
+mot_why <- knitr::knit(text = clean_md(a$motivation_why))
+cat(mot_why)
+```
+
+
+#### What do you want to learn as a team trainee?
+
+```{r results='asis'}
+if ("team_trainee" %in% a$roles$project_role) {
+  mot_tt <- knitr::knit(text = clean_md(a$motivation_tt))
+  cat(mot_tt)
+} else {
+  cat("does not apply")
+}
+```
+
+
+
+

@@ -127,6 +127,7 @@ make_other_qualifications <- function(applications) {
             applicant_id,
             dplyr::contains("motivation"),
             dplyr::contains("past_"),
+            german_skills,
             team_coordinator_tasks,
             d4gv_participation
         ) %>%
@@ -135,38 +136,63 @@ make_other_qualifications <- function(applications) {
                 past_applications == "successful" ~ 0,
                 past_applications == "not_successful" ~ 2,
                 past_applications == "first_application" ~ 1
-            )
+            ),
+            d4gv_count = if_else(is.na(d4gv_participation), 0, stringr::str_count(d4gv_participation, " ") + 1)
         )
     return(other_df)
 }
-calculate_skill_rating_per_role <- function(
+
+get_relevant_skill_ratings_for_project_role <- function(
+    skill_ratings,
+    role_profiles,
+    project_id,
+    project_role
+) {
+    role_profile <- role_profiles %>%
+        filter(
+            project_id == .env$project_id & 
+            role == .env$project_role
+        ) %>%
+        rename(project_role = role)
+
+    skill_ratings %>%
+        filter(
+            skill %in% role_profile$skill
+        ) %>%
+        select(-question) %>%
+        right_join(role_profile, by = "skill")
+}
+
+
+calculate_aggregated_skill_ratings <- function(
     role_choices,
     role_profiles,
     skill_ratings
 ) {
-    role_choices <- role_choices %>%
-        mutate(
-            mean_skills = purrr::pmap_dbl(
-                list(applicant_id, project_id, project_role),
-                function(applicant_id, project_id, project_role) {
-                    relevant_skills <- role_profiles %>%
-                        filter(
-                            project_id == .env$project_id,
-                            role == .env$project_role
-                        )
-
-                    relevant_ratings <- skill_ratings %>%
-                        filter(
-                            applicant_id == .env$applicant_id,
-                            skill %in% relevant_skills$skill
-                        )
-
-                    round(mean(relevant_ratings$rating_num, na.rm = TRUE), 2)
-                }
-            )
-        )
+    purrr::pmap_dfr(
+        list(
+            role_choices$applicant_id,
+            role_choices$project_id,
+            role_choices$project_role
+        ),
+        function(applicant_id, project_id, project_role) {
+            skill_ratings %>% 
+                filter(applicant_id == .env$applicant_id) %>% 
+                get_relevant_skill_ratings_for_project_role(role_profiles, project_id, project_role) %>% 
+                group_by(applicant_id, project_id, project_role, priority) %>%
+                summarize(
+                    mean_rating = round(mean(rating_num, na.rm = TRUE), 2),
+                    max_score = n() * 4, # times four because of beginner, user, advanced, expert
+                    sum_score = sum(rating_num, na.rm = TRUE),
+                    score = round(sum_score / max_score * 5, 2) # normalize to 0-5 to align with motivation scale --> is it basically the mean rescaled to 0 - 5?
+                ) %>%
+                pivot_wider(
+                    names_from = priority,
+                    values_from = c(mean_rating, max_score, sum_score, score)
+                )
+        }
+    )
 }
-
 
 
 make_role_profiles_long <- function(role_profiles_wide) {
@@ -174,15 +200,14 @@ make_role_profiles_long <- function(role_profiles_wide) {
         select(
             project_id,
             role = name,
-            Technologies_Tools = Tools,
-            Techniques_Topics = TechniquesTopics
+            ends_with(c("_core", "_nicetohave"))
         ) %>%
         gather(
-            Technologies_Tools:Techniques_Topics,
+            ends_with(c("_core", "_nicetohave")),
             key = "question",
             value = "skill"
         ) %>%
-        mutate(question = tolower(question)) %>%
+        tidyr::separate(question, c("question", "priority"), sep = "_") %>%
         filter(!is.na(skill)) %>%
         separate_rows(skill, sep = ",") %>%
         mutate(skill = str_trim(skill))
@@ -200,7 +225,8 @@ build_wide <- function(demographics, other_quali) {
             starts_with("motivation"),
             starts_with("past_applications"),
             team_coordinator_tasks,
-            d4gv_participation
+            starts_with("d4gv"),
+            german_skills
         ) %>%
         arrange(applicant_id)
     wide
@@ -218,7 +244,26 @@ build_gs_upload <- function(roles_skills, demographics, other_quali) {
             project_role,
             past_applications,
             pa_score,
-            skills_mean_self = mean_skills
+            d4gv_count,
+            starts_with("score"),
+            german_skills
         ) %>%
-        arrange(gender, applicant_id, project_id, project_role) 
+        arrange(gender, applicant_id, project_id, project_role)
+}
+
+build_report_data <- function(roles_skills, demographics, other_quali) {
+    roles_skills %>%
+        left_join(demographics, by = "applicant_id") %>%
+        left_join(other_quali, by = "applicant_id") %>%
+        dplyr::select(
+            applicant_id,
+            gender,
+            project_id,
+            project_role,
+            past_applications,
+            pa_score,
+            ends_with("nicetohave"),
+            ends_with("core")
+        ) %>%
+        arrange(gender, applicant_id, project_id, project_role)
 }

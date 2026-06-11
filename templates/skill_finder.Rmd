@@ -1,0 +1,28 @@
+---
+params:
+  folder: "projects/2026-06-projects"
+  project_id: "2026-06-LLH"
+  skill: "data_management"
+output: rmdformats::robobook
+title: "Team `r toupper(params$project_id)`"
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+library(dplyr)
+ratings <- readr::read_csv(here::here(params$folder, "data", "applicant_skill_ratings.csv"))
+proj_appl <- readr::read_csv(here::here(params$folder, "data", "scored_applicants.csv")) %>% 
+  filter(project_id == params$project_id)
+```
+
+```{r}
+ratings %>% 
+  filter(applicant_id %in% proj_appl$applicant_id) %>% 
+  filter(skill == params$skill) %>% 
+  arrange(desc(rating_num)) %>% 
+  right_join(proj_appl) %>% 
+  select(applicant_id, project_role, skill, rating_num, rating)
+```
+
