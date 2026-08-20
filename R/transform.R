@@ -115,7 +115,7 @@ make_demographics <- function(applications) {
             applicant_id,
             first_name,
             last_name,
-            email,
+            email = email_address,
             gender
         )
     return(demographics_info_df)
