@@ -242,11 +242,11 @@ build_gs_upload <- function(roles_skills, demographics, other_quali) {
             gender,
             project_id,
             project_role,
+            german_skills,
             past_applications,
             pa_score,
             d4gv_count,
-            starts_with("score"),
-            german_skills
+            starts_with("score")
         ) %>%
         arrange(gender, applicant_id, project_id, project_role)
 }
