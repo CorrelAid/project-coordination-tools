@@ -1,8 +1,8 @@
 ---
 params:
-  folder: "projects/2026-06-projects"
-  project_id: "2026-06-LLH"
-  skill: "data_management"
+  folder: "projects/2026-07-EDU"
+  project_id: "2026-07-EDU"
+  skill: "javascript"
 output: rmdformats::robobook
 title: "Team `r toupper(params$project_id)`"
 ---

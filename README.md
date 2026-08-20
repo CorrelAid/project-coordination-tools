@@ -50,4 +50,8 @@ GSHEET="Google Sheets URL where you did anonymized team selection" # only needed
 
 Refer to the [targets documentation](https://books.ropensci.org/targets/) if you run into problems. Especially relevant could be the following commands.
 
-- `tar_invalidate(applications_raw)` to rerun loading data from Kobo
+- `targets::tar_invalidate(applications_raw)` to rerun loading data from Kobo
+- `targets::tar_make(dplyr::starts_with("file"))` to update all the files (e.g. `gs_upload.csv`)
+- `targets::tar_make(dplyr::starts_with("report_by"))` to update the reports for team selection
+- `targets::tar_make(report_teams)` to update the reports after team selection
+

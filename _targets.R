@@ -17,7 +17,7 @@ tar_option_set(
 tar_source("R")
 
 # CHANGE THIS!
-FOLDER <- here::here("projects", "2026-06-projects")
+FOLDER <- here::here("projects", "2026-07-EDU/")
 
 list(
 
@@ -45,8 +45,19 @@ list(
   ),
 
   tar_target(
+    DATA_FOLDER,
+    {
+      if (!dir.exists(here::here(FOLDER, "data"))) {
+        dir.create(here::here(FOLDER, "data"))
+      } 
+      return(here::here(FOLDER, "data"))  
+    },
+    format = "file"
+  ),
+  
+  tar_target(
     role_profiles_file,
-    here::here(FOLDER, "data", "role_profiles.csv"),
+    here::here(DATA_FOLDER, "role_profiles.csv"),
     format = "file"
   ),
 
@@ -138,36 +149,36 @@ list(
   # -----------------------
   tar_target(
     file_gs_upload,
-    write_csv_target(gs_upload_df, here::here(FOLDER, "data", "gs_upload.csv")),
+    write_csv_target(gs_upload_df, here::here(DATA_FOLDER, "gs_upload.csv")),
     format = "file"
   ),
 
   tar_target(file_applicant_report_data,
-      write_csv_target(report_data, here::here(FOLDER, "data", "scored_applicants.csv")),
+      write_csv_target(report_data, here::here(DATA_FOLDER, "scored_applicants.csv")),
       format = "file"
   ),
 
   tar_target(
     file_applicant_wide,
-    write_csv_target(wide_df, here::here(FOLDER, "data", "applicant_wide.csv")),
+    write_csv_target(wide_df, here::here(DATA_FOLDER, "applicant_wide.csv")),
     format = "file"
   ),
 
   tar_target(
     file_applicant_skill_ratings,
-    write_csv_target(applicant_skill_ratings_df, here::here(FOLDER, "data", "applicant_skill_ratings.csv")),
+    write_csv_target(applicant_skill_ratings_df, here::here(DATA_FOLDER, "applicant_skill_ratings.csv")),
     format = "file"
   ),
 
   tar_target(
     file_role_profiles_long,
-    write_csv_target(role_profiles_long, here::here(FOLDER, "data", "role_profiles_long.csv")),
+    write_csv_target(role_profiles_long, here::here(DATA_FOLDER, "role_profiles_long.csv")),
     format = "file"
   ),
 
   tar_target(
     file_mapping,
-    write_csv_target(mapping_df, here::here(FOLDER, "data", "mapping.csv")),
+    write_csv_target(mapping_df, here::here(DATA_FOLDER, "mapping.csv")),
     format = "file"
   ),
 
@@ -183,7 +194,7 @@ list(
 
   tar_target(
     selected_file,
-    write_csv_target(selected_df, file.path(FOLDER, "data", "selected.csv")),
+    write_csv_target(selected_df, file.path(DATA_FOLDER, "selected.csv")),
     format = "file"
   ),
 
@@ -213,7 +224,7 @@ list(
       file_role_profiles_long = file_role_profiles_long,
       file_scored_applicants = file_applicant_report_data,
       file_applicant_wide = file_applicant_wide,
-      file_applicant_skill_ratings = file_applicant_skill_ratings,
+      file_applicant_skill_ratings = file_applicant_skill_ratings
     ),
     output_file = here::here(FOLDER, "report-by-applicant.html")
   ),
